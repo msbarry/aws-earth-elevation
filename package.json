@@ -3,7 +3,7 @@
     "@mapbox/tilebelt": "^1.0.1",
     "get-pixels": "^3.3.0"
   },
-  "name": "mapbox-elevation",
+  "name": "aws-earth-elevation",
   "version": "1.0.0",
   "description": "qucikly get the elevation of any lng,lat in the world",
   "main": "index.js",

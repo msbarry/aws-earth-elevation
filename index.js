@@ -2,14 +2,48 @@ var tilebelt = require('@mapbox/tilebelt');
 var pkg = require('./package.json');
 var getPixels = require('get-pixels');
 
-module.exports = function(tk) {
-  return function(p, cb) {
-    var tf = tilebelt.pointToTileFraction(p[0], p[1], 20);
+// TODO interpolate between adjacent pixels
+// TODO take path (list of points, encoded polyline, optional "samples" parameter)
+// infer zoom level from path detail
+// TODO include location in response
+
+module.exports = function (cacheSize) {
+  // poor man's LRU cache
+  cacheSize = cacheSize || 100;
+  var cache = {};
+  function getPixelPromise(url) {
+    var now = Date.now();
+    cache[url] = cache[url] || {
+      value: new Promise(function (res, rej) {
+        getPixels(url, function (err, pixels) {
+          if (err) rej(err);
+          else res(pixels);
+        });
+      }),
+      time: now
+    };
+    var result = cache[url].value;
+    cache[url].time = now;
+    var keys = Object.keys(cache);
+    if (keys.length > cacheSize) {
+      var minTime = Infinity;
+      var minKey = null;
+      keys.forEach(function (key) {
+        if (key.time < minTime) {
+          minTime = key.time;
+          minKey = key;
+        }
+      })
+      delete cache[minKey];
+    }
+    return result;
+  }
+
+  return function(p, zoom) {
+    var tf = tilebelt.pointToTileFraction(p[0], p[1], zoom);
     var tile = tf.map(Math.floor);
-    var domain = 'https://api.mapbox.com/v4/';
-    var source = `mapbox.terrain-rgb/${tile[2]}/${tile[0]}/${tile[1]}.pngraw`;
-    var url = `${domain}${source}?access_token=${tk}`;
-    getPixels(url, function(err, pixels) {
+    var url = `https://elevation-tiles-prod.s3.amazonaws.com/terrarium/${tile[2]}/${tile[0]}/${tile[1]}.png`;
+    return getPixels(url, function(err, pixels) {
       if (err) return cb(err);
       var xp = tf[0] - tile[0];
       var yp = tf[1] - tile[1];
@@ -20,11 +54,9 @@ module.exports = function(tk) {
       var G = pixels.get(x, y, 1);
       var B = pixels.get(x, y, 2);
 
-      var height = -10000 + ((R * 256 * 256 + G * 256 + B) * 0.1);
+      var height = (R * 256 + G + B / 256) - 32768;
 
       return cb(null, height);
-
     });
   }
-}
-
+};
