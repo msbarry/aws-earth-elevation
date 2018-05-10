@@ -1,4 +1,4 @@
-# Mapbox Elevation
+# AWS Earth Elevation
 
 Quickly get the elevation of any point in the world from AWS Earth's public elevation datasource.
 
