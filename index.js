@@ -6,6 +6,7 @@ var getPixels = require('get-pixels');
 // TODO take path (list of points, encoded polyline, optional "samples" parameter)
 // infer zoom level from path detail
 // TODO include location in response
+// TODO optionally filter-out bathymetry
 
 module.exports = function (cacheSize) {
   // poor man's LRU cache
